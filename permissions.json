@@ -1,0 +1,44 @@
+{
+    "permission": [
+        {
+            "access": "view",
+            "description": "Allow to view permission from all staff"
+        },
+        {
+            "access": "grant",
+            "description": "Allow to grant permission for other staff"
+        },
+        {
+            "access": "revoke",
+            "description": "Allow revoke permission from other staff"
+        }
+    ],
+    "operation": [
+        {
+            "access": "view",
+            "description": "Allow to view only entity operation, except permission management"
+        },
+        {
+            "access": "update",
+            "description": "Allow add and update entity operation, except permission management"
+        },
+        {
+            "access": "delete",
+            "description": "Allow delete entity operation, except permission management"
+        }
+    ],
+    "warehouse": [
+        {
+            "access": "view",
+            "description": "Allow view only all warehouse operation"
+        },
+        {
+            "access": "update",
+            "description": "Allow add and update warehouse operation"
+        },
+        {
+            "access": "delete",
+            "description": "Allow delete warehouse operation"
+        }
+    ]
+}

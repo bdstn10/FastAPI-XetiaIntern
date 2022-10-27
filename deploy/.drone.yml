@@ -1,0 +1,154 @@
+---
+kind: pipeline
+type: kubernetes
+name: BuildStage
+
+trigger:
+  branch:
+    - main
+  event:
+    - push
+
+steps:
+  - name: publish
+    image: gcr.io/kaniko-project/executor:debug
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: AWS_SECRET_ACCESS_KEY
+      AWS_ECR_REPOSITORY:
+        from_secret: AWS_ECR_REPOSITORY
+      AWS_ECR_REGISTRY:
+        from_secret: AWS_ECR_REGISTRY
+      AWS_ECR_REGION:
+        from_secret: AWS_ECR_REGION
+    commands:
+      - mkdir -p /kaniko/.docker
+      - echo "{\"credsStore\":\"ecr-login\"}" > /kaniko/.docker/config.json
+      - >-
+        /kaniko/executor
+        --cache
+        --context "$(pwd)"
+        --dockerfile "$(pwd)/deploy/Dockerfile"
+        --destination "$AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:rc"
+---
+kind: pipeline
+type: kubernetes
+name: BuildProd
+
+trigger:
+  branch:
+    - main
+  event:
+    - tag
+
+steps:
+  - name: publish
+    image: gcr.io/kaniko-project/executor:debug
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: AWS_SECRET_ACCESS_KEY
+      AWS_ECR_REPOSITORY:
+        from_secret: AWS_ECR_REPOSITORY
+      AWS_ECR_REGISTRY:
+        from_secret: AWS_ECR_REGISTRY
+      AWS_ECR_REGION:
+        from_secret: AWS_ECR_REGION
+    commands:
+      - mkdir -p /kaniko/.docker
+      - echo "{\"credsStore\":\"ecr-login\"}" > /kaniko/.docker/config.json
+      - >-
+        /kaniko/executor
+        --cache
+        --context "$(pwd)"
+        --dockerfile "$(pwd)/deploy/Dockerfile"
+        --destination "$AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:latest"
+        --destination "$AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:${DRONE_TAG}"
+---
+kind: pipeline
+type: kubernetes
+name: Deploy2Stage
+
+trigger:
+  ref:
+    - refs/heads/main
+  event:
+    - promote
+  target:
+    - staging
+
+steps:
+  - name: deploy_k8s_hararu
+    image: bitnami/kubectl:latest
+    environment:
+      AWS_ECR_REGISTRY:
+        from_secret: AWS_ECR_REGISTRY
+      AWS_ECR_REPOSITORY:
+        from_secret: AWS_ECR_REPOSITORY
+      KUBERNETES_SERVER:
+        from_secret: K8S_STAGE_SERVER
+      KUBERNETES_CERT:
+        from_secret: K8S_STAGE_CERT
+      KUBERNETES_TOKEN:
+        from_secret: K8S_STAGE_TOKEN_HARARU_STAGE
+    commands:
+      #
+      - cd /tmp
+      - echo $KUBERNETES_CERT | base64 -d > ca.crt
+      - kubectl config set-cluster default --embed-certs --server=$KUBERNETES_SERVER --certificate-authority=ca.crt
+      - kubectl config set-credentials default --token=$KUBERNETES_TOKEN
+      - kubectl config set-context default --cluster=default --user=default
+      - kubectl config use-context default
+      #
+      - export IMAGE=$AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:rc
+      - kubectl -n hararu-stage patch configmap hararu-point -p "{\"data\":{\"VERSION\":\"hararu-point@${DRONE_COMMIT_SHA:0:7}\"}}"
+      - kubectl -n hararu-stage patch deployment hararu-point -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"commit-sha\":\"${DRONE_COMMIT_SHA:0:7}\"}}}}}"
+      - kubectl -n hararu-stage rollout status deployment hararu-point
+---
+kind: pipeline
+type: kubernetes
+name: Deploy2Prod
+
+trigger:
+  ref:
+    - refs/tags/*
+  event:
+    - promote
+  target:
+    - production
+
+steps:
+  - name: deploy_k8s_hararu
+    image: bitnami/kubectl:latest
+    environment:
+      AWS_ECR_REGISTRY:
+        from_secret: AWS_ECR_REGISTRY
+      AWS_ECR_REPOSITORY:
+        from_secret: AWS_ECR_REPOSITORY
+      KUBERNETES_SERVER:
+        from_secret: K8S_PROD_SERVER
+      KUBERNETES_CERT:
+        from_secret: K8S_PROD_CERT
+      KUBERNETES_TOKEN:
+        from_secret: K8S_PROD_TOKEN_HARARU_PROD
+    commands:
+      #
+      - cd /tmp
+      - echo $KUBERNETES_CERT | base64 -d > ca.crt
+      - kubectl config set-cluster default --embed-certs --server=$KUBERNETES_SERVER --certificate-authority=ca.crt
+      - kubectl config set-credentials default --token=$KUBERNETES_TOKEN
+      - kubectl config set-context default --cluster=default --user=default
+      - kubectl config use-context default
+      #
+      - export IMAGE=$AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:$DRONE_TAG
+      - kubectl -n hararu-prod patch configmap hararu-point -p "{\"data\":{\"VERSION\":\"hararu-point@${DRONE_TAG}\"}}"
+      - kubectl -n hararu-prod patch deployment hararu-point -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"nginx\",\"image\":\"$IMAGE\"},{\"name\":\"gunicorn\",\"image\":\"$IMAGE\"}]}}}}"
+      - kubectl -n hararu-prod rollout status deployment hararu-point
+---
+kind: signature
+hmac: 83a2ef5fca0a47c99a840684e3cfc12899c7041ea80680c7cf3cbe5b246d1bb5
+
+...

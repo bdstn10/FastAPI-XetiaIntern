@@ -1,0 +1,130 @@
+openapi: 3.0.0
+info:
+  title: Course Service
+  description: Course Service
+  contact:
+    email: you@your-company.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+servers:
+- url: https://example.com
+  # description: Mock
+tags:
+- name: Overview
+  description: Overview course
+- name: Content
+  description: Course content
+
+components:
+  schemas:
+    meta:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: success
+
+paths:
+  /course:
+    get:
+      tags:
+      - Overview
+      summary: get 
+      description: get all  with id
+      operationId: getAllFamily
+      responses:
+        "200":
+          description: success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schema:
+                    $ref: '#/components/schemas/meta'
+        '401':
+          description: unauthorized
+
+    post:
+      tags:
+      - Overview
+      summary: get 
+      description: get all  with id
+      operationId: getAllFamily
+      responses:
+        "200":
+          description: success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schema:
+                    $ref: '#/components/schemas/meta'
+        '401':
+          description: unauthorized
+
+  /review:
+    get:
+      tags:
+      - Overview
+      summary: get 
+      description: get all  with id
+      operationId: getAllFamily
+      responses:
+        "200":
+          description: success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schema:
+                    $ref: '#/components/schemas/meta'
+        '401':
+          description: unauthorized
+
+  /sylabus:
+    get:
+      tags:
+      - Overview
+      summary: get 
+      description: get all  with id
+      operationId: getAllFamily
+      responses:
+        "200":
+          description: success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schema:
+                    $ref: '#/components/schemas/meta'
+        '401':
+          description: unauthorized
+
+  /faq:
+    get:
+      tags:
+      - Overview
+      summary: get 
+      description: get all  with id
+      operationId: getAllFamily
+      responses:
+        "200":
+          description: success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schema:
+                    $ref: '#/components/schemas/meta'
+        '401':
+          description: unauthorized
